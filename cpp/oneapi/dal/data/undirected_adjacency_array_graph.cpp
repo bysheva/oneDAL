@@ -144,35 +144,14 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     daal::services::Atomic<int_t> *degrees_cv =
         new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count];
 
-    const size_t _nBlocks = 1024;
-    size_t _nRowsInBlock, _nRowsInLastBlock, _total;
-
-    _total            = layout_unfilt->_vertex_count;
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks, _nBlocks, [=, &degrees_cv](int block) {
-        const size_t nRowsToProcess = ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-        const size_t startRow       = block * _nRowsInBlock;
-        for (size_t i = 0; i < nRowsToProcess; i++) {
-            degrees_cv[startRow + i].set(0);
-        }
+    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+        degrees_cv[u].set(0);
     });
 
-    _total            = edges.size();
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks,
-                       _nBlocks,
-                       [=, &degrees_cv](int block) {
-                           const size_t nRowsToProcess =
-                               ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-                           const size_t startRow = block * _nRowsInBlock;
-                           for (size_t i = 0; i < nRowsToProcess; i++) {
-                               degrees_cv[edges[startRow + i].first].inc();
-                               degrees_cv[edges[startRow + i].second].inc();
-                           }
-                       }
-                       /*, tbb::static_partitioner()*/);
+    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+        degrees_cv[edges[u].first].inc();
+        degrees_cv[edges[u].second].inc();
+    });
 
     daal::services::Atomic<int_t> *rows_cv =
         new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count + 1];
@@ -190,28 +169,15 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     auto _rows_un = layout_unfilt->_edge_offsets.data();
     auto _cols_un = layout_unfilt->_vertex_neighbors.data();
 
-    _total            = layout_unfilt->_vertex_count + 1;
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks, _nBlocks, [=, &rows_cv, &_rows_un](int block) {
-        const size_t nRowsToProcess = ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-        const size_t startRow       = block * _nRowsInBlock;
-        for (size_t i = 0; i < nRowsToProcess; i++) {
-            _rows_un[startRow + i] = rows_cv[startRow + i].get();
-        }
-    });
+    daal::threader_for(layout_unfilt->_vertex_count + 1,
+                       layout_unfilt->_vertex_count + 1,
+                       [&](int n) {
+                           _rows_un[n] = rows_cv[n].get();
+                       });
 
-    _total            = edges.size();
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks, _nBlocks, [&](int block) {
-        const size_t nRowsToProcess = ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-        const size_t startRow       = block * _nRowsInBlock;
-        for (size_t i = 0; i < nRowsToProcess; i++) {
-            const size_t u                               = startRow + i;
-            _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
-            _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
-        }
+    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+        _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
+        _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
     });
     delete[] rows_cv;
 
@@ -221,27 +187,18 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout->_degrees.resize(layout->_vertex_count);
 
-    _total            = layout_unfilt->_vertex_count;
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks, _nBlocks, [&](int block) {
-        const size_t nRowsToProcess = ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-        const size_t startRow       = block * _nRowsInBlock;
-        for (size_t i = 0; i < nRowsToProcess; i++) {
-            size_t u = startRow + i;
-            std::sort(
-                layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
-                layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
-            auto neighs_u_new_end = std::unique(
-                layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
-                layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
-            neighs_u_new_end = std::remove(
-                layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
-                neighs_u_new_end,
-                u);
-            layout->_degrees[u] = neighs_u_new_end - (layout_unfilt->_vertex_neighbors.begin() +
-                                                      layout_unfilt->_edge_offsets[u]);
-        }
+    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+        std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+                  layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
+        auto neighs_u_new_end = std::unique(
+            layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+            layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
+        neighs_u_new_end =
+            std::remove(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+                        neighs_u_new_end,
+                        u);
+        layout->_degrees[u] = neighs_u_new_end - (layout_unfilt->_vertex_neighbors.begin() +
+                                                  layout_unfilt->_edge_offsets[u]);
     });
 
     layout->_edge_offsets.resize(layout->_vertex_count + 1);
@@ -257,19 +214,11 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
 
-    _total            = layout->_vertex_count;
-    _nRowsInBlock     = _total / _nBlocks;
-    _nRowsInLastBlock = _total - _nBlocks * _nRowsInBlock;
-    daal::threader_for(_nBlocks, _nBlocks, [&](int block) {
-        const size_t nRowsToProcess = ((block == _nBlocks - 1) ? _nRowsInLastBlock : _nRowsInBlock);
-        const size_t startRow       = block * _nRowsInBlock;
-        for (size_t i = 0; i < nRowsToProcess; i++) {
-            size_t u    = startRow + i;
-            auto neighs = get_vertex_neighbors_impl(g_unfiltred, u);
-            for (int_t i = 0; i < get_vertex_degree_impl(g, u); i++) {
-                *(layout->_vertex_neighbors.begin() + layout->_edge_offsets[u] + i) =
-                    *(neighs.first + i);
-            }
+    daal::threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
+        auto neighs = get_vertex_neighbors_impl(g_unfiltred, u);
+        for (int_t i = 0; i < get_vertex_degree_impl(g, u); i++) {
+            *(layout->_vertex_neighbors.begin() + layout->_edge_offsets[u] + i) =
+                *(neighs.first + i);
         }
     });
 
