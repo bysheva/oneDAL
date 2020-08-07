@@ -19,6 +19,9 @@
 #include "oneapi/dal/data/graph.hpp"
 #include "oneapi/dal/util/csv_data_source.hpp"
 
+#include <chrono>
+#include <iostream>
+
 namespace oneapi::dal::preview {
 
 struct edge_list_to_csr_descriptor {};
@@ -31,7 +34,23 @@ edge_list<IndexT> load(const std::string &name);
 template <typename G, typename Descriptor, typename DataSource>
 G load_graph(const Descriptor &d, const DataSource &ds) {
     G graph_data;
-    convert_to_csr(detail::load<typename G::vertex_type>(ds.get_filename()), graph_data);
+
+    std::chrono::steady_clock::time_point begin_read = std::chrono::steady_clock::now();
+    const auto &edges = detail::load<typename G::vertex_type>(ds.get_filename());
+    std::chrono::steady_clock::time_point end_read = std::chrono::steady_clock::now();
+
+    std::chrono::steady_clock::time_point begin_convert = std::chrono::steady_clock::now();
+    convert_to_csr(edges, graph_data);
+    std::chrono::steady_clock::time_point end_convert = std::chrono::steady_clock::now();
     return graph_data;
+    std::cout
+        << "Time difference read = "
+        << std::chrono::duration_cast<std::chrono::microseconds>(end_read - begin_read).count()
+        << "[µs]" << std::endl;
+    std::cout << "Time difference construct = "
+              << std::chrono::duration_cast<std::chrono::microseconds>(end_construct -
+                                                                       begin_construct)
+                     .count()
+              << "[µs]" << std::endl;
 }
 } // namespace oneapi::dal::preview
