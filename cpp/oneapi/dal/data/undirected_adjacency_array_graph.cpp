@@ -132,7 +132,8 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     }
 
     G g_unfiltred;
-    auto layout_unfilt   = detail::get_impl(g_unfiltred);
+    auto layout_unfilt = detail::get_impl(g_unfiltred);
+
     vertex_t max_node_id = edges[0].first;
     for (auto u : edges) {
         vertex_t max_id_in_edge = std::max(u.first, u.second);
@@ -224,51 +225,6 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     return /*ok*/;
 }
-
-// template <typename G>
-// void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
-//     auto layout    = detail::get_impl(g);
-//     using int_t    = typename G::vertex_size_type;
-//     using vertex_t = typename G::vertex_type;
-
-//     layout->_vertex_count = 0;
-//     layout->_edge_count   = 0;
-
-//     vertex_t max_id = 0;
-
-//     for (auto edge : edges) {
-//         max_id = std::max(max_id, std::max(edge.first, edge.second));
-//         layout->_edge_count += 1;
-//     }
-
-//     layout->_vertex_count = max_id + 1;
-//     layout->_degrees.resize(layout->_vertex_count);
-//     std::fill(layout->_degrees.begin(), layout->_degrees.end(), 0);
-
-//     for (auto edge : edges) {
-//         layout->_degrees[edge.first]++;
-//         layout->_degrees[edge.second]++;
-//     }
-
-//     layout->_edge_offsets.resize(layout->_vertex_count + 1);
-//     auto _rows              = layout->_edge_offsets.data();
-//     int_t total_sum_degrees = 0;
-//     _rows[0]                = total_sum_degrees;
-
-//     for (int_t i = 0; i < layout->_vertex_count; ++i) {
-//         total_sum_degrees += layout->_degrees[i];
-//         _rows[i + 1] = total_sum_degrees;
-//     }
-
-//     layout->_vertex_neighbors.resize(_rows[layout->_vertex_count] + 1);
-//     auto _cols = layout->_vertex_neighbors.data();
-//     auto offests(layout->_edge_offsets);
-
-//     for (auto edge : edges) {
-//         _cols[offests[edge.first]++]  = edge.second;
-//         _cols[offests[edge.second]++] = edge.first;
-//     }
-// }
 
 template void convert_to_csr_impl(const edge_list<vertex_type<graph64>> &edges, graph64 &g);
 
