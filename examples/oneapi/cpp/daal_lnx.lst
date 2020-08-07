@@ -29,5 +29,6 @@ DAAL = homogen_table_builder             \
        rbf_kernel_dense_batch            \
        svm_two_class_thunder_dense_batch \
        svm_two_class_smo_dense_batch     \
+       load_graph                        \
        jaccard_batch
 
