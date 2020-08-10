@@ -42,7 +42,7 @@ G load_graph(const Descriptor &d, const DataSource &ds) {
     std::chrono::steady_clock::time_point begin_construct = std::chrono::steady_clock::now();
     convert_to_csr(edges, graph_data);
     std::chrono::steady_clock::time_point end_construct = std::chrono::steady_clock::now();
-    return graph_data;
+
     std::cout
         << "Time difference read = "
         << std::chrono::duration_cast<std::chrono::microseconds>(end_read - begin_read).count()
@@ -52,5 +52,7 @@ G load_graph(const Descriptor &d, const DataSource &ds) {
                                                                        begin_construct)
                      .count()
               << "[µs]" << std::endl;
+
+    return graph_data;
 }
 } // namespace oneapi::dal::preview
