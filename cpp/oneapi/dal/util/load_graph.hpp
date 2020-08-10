@@ -43,13 +43,15 @@ G load_graph(const Descriptor &d, const DataSource &ds) {
     convert_to_csr(edges, graph_data);
     std::chrono::steady_clock::time_point end_construct = std::chrono::steady_clock::now();
 
-    std::cout << "Time difference read = "
-              << std::chrono::duration_cast<std::chrono::seconds>(end_read - begin_read).count()
-              << "[s]" << std::endl;
     std::cout
-        << "Time difference construct = "
-        << std::chrono::duration_cast<std::chrono::seconds>(end_construct - begin_construct).count()
+        << "Time difference read = "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(end_read - begin_read).count()
         << "[s]" << std::endl;
+    std::cout << "Time difference construct = "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end_construct -
+                                                                       begin_construct)
+                     .count()
+              << "[s]" << std::endl;
 
     return graph_data;
 }
