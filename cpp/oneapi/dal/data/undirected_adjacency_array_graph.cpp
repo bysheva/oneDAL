@@ -16,6 +16,7 @@
 
 #include "oneapi/dal/data/undirected_adjacency_array_graph.hpp"
 #include "daal/src/threading/threading.h"
+#include "oneapi/dal/exceptions.hpp"
 #include "services/daal_atomic_int.h"
 
 namespace oneapi::dal::preview {
@@ -124,6 +125,8 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     auto layout    = detail::get_impl(g);
     using int_t    = typename G::vertex_size_type;
     using vertex_t = typename G::vertex_type;
+    // using atomic_allocator_t =
+    // typename std::allocator_traits<Allocator>::template rebind_alloc<daal::services::Atomic<int_t>>;
 
     if (edges.size() == 0) {
         layout->_vertex_count = 0;
@@ -142,8 +145,13 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout_unfilt->_vertex_count = max_node_id + 1;
 
-    daal::services::Atomic<int_t> *degrees_cv =
-        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count];
+    daal::services::Atomic<int_t> *degrees_cv_array =
+        new (std::nothrow) daal::services::Atomic<int_t>[layout_unfilt->_vertex_count];
+    if (!degrees_cv_array) {
+        throw bad_alloc();
+    }
+    auto degrees_cv_array_ptr = std::make_shared<daal::services::Atomic<int_t>[]>(degrees_cv_array);
+    auto degrees_cv           = degrees_cv_array_ptr.get();
 
     daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         degrees_cv[u].set(0);
@@ -154,8 +162,14 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         degrees_cv[edges[u].second].inc();
     });
 
-    daal::services::Atomic<int_t> *rows_cv =
-        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count + 1];
+    daal::services::Atomic<int_t> *rows_cv_array =
+        new (std::nothrow) daal::services::Atomic<int_t>[layout_unfilt->_vertex_count + 1];
+    if (!rows_cv_array) {
+        throw bad_alloc();
+    }
+    auto rows_cv_array_ptr = std::make_shared<daal::services::Atomic<int_t>[]>(rows_cv_array);
+    auto rows_cv           = degrees_cv_array_ptr.get();
+
     int_t total_sum_degrees = 0;
     rows_cv[0].set(total_sum_degrees);
 
@@ -163,7 +177,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         total_sum_degrees += degrees_cv[i].get();
         rows_cv[i + 1].set(total_sum_degrees);
     }
-    delete[] degrees_cv;
+    // delete[] degrees_cv;
 
     layout_unfilt->_vertex_neighbors.resize(rows_cv[layout_unfilt->_vertex_count].get());
     layout_unfilt->_edge_offsets.resize(layout_unfilt->_vertex_count + 1);
@@ -180,7 +194,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
         _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
     });
-    delete[] rows_cv;
+    // delete[] rows_cv;
 
     //removing self-loops,  multiple edges from graph, and make neighbors in CSR sorted
 
