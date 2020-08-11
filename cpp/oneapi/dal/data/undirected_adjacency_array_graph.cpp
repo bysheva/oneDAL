@@ -186,6 +186,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout->_vertex_count = layout_unfilt->_vertex_count;
 
+    layout->_degrees.reserve(layout->_vertex_count);
     layout->_degrees.resize(layout->_vertex_count);
 
     daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
@@ -202,6 +203,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
                                                   layout_unfilt->_edge_offsets[u]);
     });
 
+    layout->_edge_offsets.reserve(layout->_vertex_count + 1);
     layout->_edge_offsets.resize(layout->_vertex_count + 1);
 
     total_sum_degrees        = 0;
@@ -213,6 +215,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     }
     layout->_edge_count = layout->_edge_offsets[layout->_vertex_count] / 2;
 
+    layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
     layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
 
     daal::threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
