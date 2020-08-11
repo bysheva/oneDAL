@@ -45,13 +45,13 @@ G load_graph(const Descriptor &d, const DataSource &ds) {
 
     std::cout
         << "Time difference read = "
-        << std::chrono::duration_cast<std::chrono::milliseconds>(end_read - begin_read).count()
-        << "[s]" << std::endl;
+        << std::chrono::duration_cast<std::chrono::microseconds>(end_read - begin_read).count()
+        << "[microsec]" << std::endl;
     std::cout << "Time difference construct = "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_construct -
+              << std::chrono::duration_cast<std::chrono::microseconds>(end_construct -
                                                                        begin_construct)
                      .count()
-              << "[s]" << std::endl;
+              << "[microsec]" << std::endl;
 
     return graph_data;
 }

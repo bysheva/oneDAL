@@ -34,5 +34,13 @@ int main(int argc, char **argv) {
     std::cout << "Graph is read: ";
     std::cout << "# vertices is " << get_vertex_count(my_graph) << " ";
     std::cout << "# edges is " << get_edge_count(my_graph) << std::endl;
+    for (unsigned int j = 0; j < get_vertex_count(my_graph) && j < 10; ++j) {
+        std::cout << "Neighbors of " << j << ": ";
+        auto neigh = get_vertex_neighbors(my_graph, j);
+        for (auto i = neigh.first; i != neigh.second; ++i) {
+            std::cout << *i << " ";
+        }
+        std::cout << std::endl;
+    }
     return 0;
 }

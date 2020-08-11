@@ -121,9 +121,10 @@ template vertex_user_value_type<graph32> get_vertex_value_impl(const graph32 &g,
 
 template <typename G>
 void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
-    auto layout    = detail::get_impl(g);
-    using int_t    = typename G::vertex_size_type;
-    using vertex_t = typename G::vertex_type;
+    auto layout           = detail::get_impl(g);
+    using int_t           = typename G::vertex_size_type;
+    using vertex_t        = typename G::vertex_type;
+    using vector_vertex_t = typename G::vertex_set;
 
     if (edges.size() == 0) {
         layout->_vertex_count = 0;
@@ -186,8 +187,8 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout->_vertex_count = layout_unfilt->_vertex_count;
 
-    layout->_degrees.reserve(layout->_vertex_count);
-    layout->_degrees.resize(layout->_vertex_count);
+    layout->_degrees = std::move(vector_vertex_t(layout->_vertex_count));
+    // layout->_degrees.resize(layout->_vertex_count);
 
     daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
@@ -203,20 +204,23 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
                                                   layout_unfilt->_edge_offsets[u]);
     });
 
+    layout->_edge_offsets.clear();
     layout->_edge_offsets.reserve(layout->_vertex_count + 1);
-    layout->_edge_offsets.resize(layout->_vertex_count + 1);
+    // layout->_edge_offsets.resize(layout->_vertex_count + 1);
 
-    total_sum_degrees        = 0;
-    layout->_edge_offsets[0] = total_sum_degrees;
+    total_sum_degrees = 0;
+    layout->_edge_offsets.push_back(total_sum_degrees);
 
     for (size_t i = 0; i < layout->_vertex_count; ++i) {
         total_sum_degrees += layout->_degrees[i];
-        layout->_edge_offsets[i + 1] = total_sum_degrees;
+        layout->_edge_offsets.push_back(total_sum_degrees);
     }
     layout->_edge_count = layout->_edge_offsets[layout->_vertex_count] / 2;
 
-    layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
-    layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
+    // layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
+    // layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
+    layout->_vertex_neighbors =
+        std::move(vector_vertex_t(layout->_edge_offsets[layout->_vertex_count]));
 
     daal::threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
         auto neighs = get_vertex_neighbors_impl(g_unfiltred, u);
