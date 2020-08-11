@@ -72,6 +72,9 @@ extern "C"
 
     DAAL_EXPORT void * _threaded_scalable_malloc(const size_t size, const size_t alignment);
     DAAL_EXPORT void _threaded_scalable_free(void * ptr);
+
+    DAAL_EXPORT void _daal_parallel_sort(int * begin, int * end);
+    DAAL_EXPORT void _daal_parallel_sort_long_int(long int * begin, long int * end);
 }
 
 namespace daal
@@ -137,6 +140,16 @@ inline void threader_for(int n, int threads_request, const F & lambda)
     const void * a = static_cast<const void *>(&lambda);
 
     _daal_threader_for(n, threads_request, a, threader_func<F>);
+}
+
+inline void parallel_sort(int * begin, int * end)
+{
+    _daal_parallel_sort(begin, end);
+}
+
+inline void parallel_sort(long int * begin, long int * end)
+{
+    _daal_parallel_sort_long_int(begin, end);
 }
 
 template <typename F>

@@ -43,6 +43,7 @@
 using namespace daal::services;
 #else
     #include "src/externals/service_service.h"
+    #include "src/algorithms/service_sort.h"
 #endif
 
 DAAL_EXPORT void * _threaded_scalable_malloc(const size_t size, const size_t alignment)
@@ -234,12 +235,32 @@ DAAL_EXPORT void _daal_lock_mutex(void * mutexPtr)
 #endif
 }
 
+
 DAAL_EXPORT void _daal_unlock_mutex(void * mutexPtr)
 {
 #if defined(__DO_TBB_LAYER__)
     static_cast<tbb::spin_mutex *>(mutexPtr)->unlock();
 #endif
 }
+
+DAAL_EXPORT void _daal_parallel_sort(int * begin, int * end)
+{
+#if defined(__DO_TBB_LAYER__)
+    tbb::parallel_sort(begin, end);
+#elif defined(__DO_SEQ_LAYER__)
+    daal::algorithms::internal::qSort<int, daal::sse2>((end-begin)/sizeof(int), begin);
+#endif
+}
+
+DAAL_EXPORT void _daal_parallel_sort_long_int(long int * begin, long int * end)
+{
+#if defined(__DO_TBB_LAYER__)
+    tbb::parallel_sort(begin, end);
+#elif defined(__DO_SEQ_LAYER__)
+    daal::algorithms::internal::qSort<long int, daal::sse2>((end - begin)/sizeof(long int), begin);
+#endif
+}
+
 
 DAAL_EXPORT void _daal_del_mutex(void * mutexPtr)
 {

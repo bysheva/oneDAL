@@ -125,6 +125,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     using int_t           = typename G::vertex_size_type;
     using vertex_t        = typename G::vertex_type;
     using vector_vertex_t = typename G::vertex_set;
+    using vector_edge_t   = typename G::edge_set;
 
     if (edges.size() == 0) {
         layout->_vertex_count = 0;
@@ -166,8 +167,8 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     }
     delete[] degrees_cv;
 
-    layout_unfilt->_vertex_neighbors.resize(rows_cv[layout_unfilt->_vertex_count].get());
-    layout_unfilt->_edge_offsets.resize(layout_unfilt->_vertex_count + 1);
+    layout_unfilt->_vertex_neighbors = std::move(vector_vertex_t(rows_cv[layout_unfilt->_vertex_count].get()));
+    layout_unfilt->_edge_offsets = std::move(vector_edge_t(layout_unfilt->_vertex_count + 1));
     auto _rows_un = layout_unfilt->_edge_offsets.data();
     auto _cols_un = layout_unfilt->_vertex_neighbors.data();
 
@@ -190,6 +191,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     layout->_degrees = std::move(vector_vertex_t(layout->_vertex_count));
     // layout->_degrees.resize(layout->_vertex_count);
 
+    // vertex_t * vertex_neighs = layout_unfilt->_vertex_neighbors.data();
     daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
                   layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);

@@ -44,14 +44,15 @@ G load_graph(const Descriptor &d, const DataSource &ds) {
     std::chrono::steady_clock::time_point end_construct = std::chrono::steady_clock::now();
 
     std::cout
-        << "Time difference read = "
+        // << "Time difference read = "
         << std::chrono::duration_cast<std::chrono::microseconds>(end_read - begin_read).count()
-        << "[microsec]" << std::endl;
-    std::cout << "Time difference construct = "
+        << "," ;//<< std::endl;
+    std::cout 
+    // << "Time difference construct = "
               << std::chrono::duration_cast<std::chrono::microseconds>(end_construct -
                                                                        begin_construct)
                      .count()
-              << "[microsec]" << std::endl;
+              << "," << std::endl;
 
     return graph_data;
 }

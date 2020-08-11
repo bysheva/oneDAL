@@ -93,7 +93,6 @@ else
 endif
 
 COPTS := -std=c++17 \
--g \
          -pedantic \
          -Wall \
          -Wextra \

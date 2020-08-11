@@ -29,18 +29,19 @@ int main(int argc, char **argv) {
         return 0;
     std::string filename = argv[1];
     csv_data_source ds(filename);
+    std::cout << filename << ",";
     edge_list_to_csr_descriptor d;
     auto my_graph = load_graph<graph>(d, ds);
-    std::cout << "Graph is read: ";
-    std::cout << "# vertices is " << get_vertex_count(my_graph) << " ";
-    std::cout << "# edges is " << get_edge_count(my_graph) << std::endl;
-    for (unsigned int j = 0; j < get_vertex_count(my_graph) && j < 10; ++j) {
-        std::cout << "Neighbors of " << j << ": ";
-        auto neigh = get_vertex_neighbors(my_graph, j);
-        for (auto i = neigh.first; i != neigh.second; ++i) {
-            std::cout << *i << " ";
-        }
-        std::cout << std::endl;
-    }
+    // std::cout << "Graph is read: ";
+    // std::cout << "# vertices is " << get_vertex_count(my_graph) << " ";
+    // std::cout << "# edges is " << get_edge_count(my_graph) << std::endl;
+    // for (unsigned int j = 0; j < get_vertex_count(my_graph) && j < 10; ++j) {
+    //     std::cout << "Neighbors of " << j << ": ";
+    //     auto neigh = get_vertex_neighbors(my_graph, j);
+    //     for (auto i = neigh.first; i != neigh.second; ++i) {
+    //         std::cout << *i << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
     return 0;
 }
