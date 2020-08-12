@@ -15,6 +15,8 @@
 *******************************************************************************/
 
 #include "oneapi/dal/data/undirected_adjacency_array_graph.hpp"
+#include "daal/src/threading/threading.h"
+#include "services/daal_atomic_int.h"
 
 namespace oneapi::dal::preview {
 
@@ -155,7 +157,6 @@ ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<G>> &edge
     layout->_vertex_count = layout_unfilt->_vertex_count;
 
     layout->_degrees = std::move(vector_vertex_t(layout->_vertex_count));
-    // layout->_degrees.resize(layout->_vertex_count);
 
     daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
@@ -173,7 +174,6 @@ ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<G>> &edge
 
     layout->_edge_offsets.clear();
     layout->_edge_offsets.reserve(layout->_vertex_count + 1);
-    // layout->_edge_offsets.resize(layout->_vertex_count + 1);
 
     total_sum_degrees = 0;
     layout->_edge_offsets.push_back(total_sum_degrees);
@@ -183,9 +183,6 @@ ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<G>> &edge
         layout->_edge_offsets.push_back(total_sum_degrees);
     }
     layout->_edge_count = layout->_edge_offsets[layout->_vertex_count] / 2;
-
-    // layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
-    // layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
     layout->_vertex_neighbors =
         std::move(vector_vertex_t(layout->_edge_offsets[layout->_vertex_count]));
 
