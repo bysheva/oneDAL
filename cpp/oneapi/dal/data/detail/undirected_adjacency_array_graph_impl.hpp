@@ -62,8 +62,9 @@ public:
     vertex_size_type _vertex_count;
     edge_size_type _edge_count;
 
-    vertex_set _vertexes;
-    edge_set _edges;
+    vertex_set _vertex_neighbors;
+    vertex_set _degrees;
+    edge_set _edge_offsets;
 
     vertex_user_value_set _vertex_value;
     edge_value_set _edge_value;

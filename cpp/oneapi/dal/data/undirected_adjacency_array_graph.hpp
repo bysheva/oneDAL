@@ -20,7 +20,7 @@
 #include "oneapi/dal/data/detail/undirected_adjacency_array_graph_impl.hpp"
 #include "oneapi/dal/data/graph_common.hpp"
 #include "services/daal_atomic_int.h"
-#include "src/threading/threading.h"
+// #include "src/threading/threading.h"
 
 namespace oneapi::dal::preview {
 
@@ -36,6 +36,25 @@ const typename G::pimpl &get_impl(const G &g) {
     return g.impl_;
 }
 } // namespace detail
+
+typedef void (*functype)(int i, const void *a);
+
+extern "C" {
+DAAL_EXPORT void _daal_threader_for(int n, int threads_request, const void *a, functype func);
+}
+
+template <typename F>
+inline void threader_func(int i, const void *a) {
+    const F &lambda = *static_cast<const F *>(a);
+    lambda(i);
+}
+
+template <typename F>
+inline void threader_for(int n, int threads_request, const F &lambda) {
+    const void *a = static_cast<const void *>(&lambda);
+
+    _daal_threader_for(n, threads_request, a, threader_func<F>);
+}
 
 template <typename VertexValue = empty_value,
           typename EdgeValue   = empty_value,
@@ -135,13 +154,42 @@ ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(const G &g, const vertex_type<G
     -> const_vertex_edge_range_type<G>;
 
 template <typename G>
+ONEAPI_DAL_EXPORT auto get_vertex_count_impl(const G &g) noexcept -> vertex_size_type<G> {
+    const auto &layout = detail::get_impl(g);
+    return layout->_vertex_count;
+}
+
+template <typename G>
+ONEAPI_DAL_EXPORT auto get_edge_count_impl(const G &g) noexcept -> edge_size_type<G> {
+    const auto &layout = detail::get_impl(g);
+    return layout->_edge_count;
+}
+
+template <typename G>
+ONEAPI_DAL_EXPORT auto get_vertex_degree_impl(const G &g, const vertex_type<G> &vertex) noexcept
+    -> vertex_edge_size_type<G> {
+    const auto &layout = detail::get_impl(g);
+    return layout->_degrees[vertex];
+}
+
+template <typename G>
+ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(const G &g, const vertex_type<G> &vertex) noexcept
+    -> const_vertex_edge_range_type<G> {
+    const auto &layout = detail::get_impl(g);
+    const_vertex_edge_iterator_type<G> vertex_neighbors_begin =
+        layout->_vertex_neighbors.begin() + layout->_edge_offsets[vertex];
+    const_vertex_edge_iterator_type<G> vertex_neighbors_end =
+        layout->_vertex_neighbors.begin() + layout->_edge_offsets[vertex + 1];
+    return std::make_pair(vertex_neighbors_begin, vertex_neighbors_end);
+}
+
+template <typename G>
 void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     auto layout           = detail::get_impl(g);
     using int_t           = typename G::vertex_size_type;
     using vertex_t        = typename G::vertex_type;
     using vector_vertex_t = typename G::vertex_set;
     using vector_edge_t   = typename G::edge_set;
-    using allocator_t     = typename G::allocator_type;
 
     if (edges.size() == 0) {
         layout->_vertex_count = 0;
@@ -160,26 +208,20 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout_unfilt->_vertex_count = max_node_id + 1;
 
-    using atomic_allocator_t = typename std::allocator_traits<allocator_t>::template rebind_alloc<
-        daal::services::Atomic<vertex_t>>;
+    daal::services::Atomic<int_t> *degrees_cv =
+        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count];
 
-    auto &degrees_atomic =
-        std::move(detail::graph_container<daal::services::Atomic<vertex_t>, atomic_allocator_t>(
-            layout_unfilt->_vertex_count));
-    daal::services::Atomic<vertex_t> *degrees_cv = degrees_atomic.data();
-    // new daal::services::Atomic<vertex_t>[layout_unfilt->_vertex_count];
-
-    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+    threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         degrees_cv[u].set(0);
     });
 
-    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+    threader_for(edges.size(), edges.size(), [&](int u) {
         degrees_cv[edges[u].first].inc();
         degrees_cv[edges[u].second].inc();
     });
 
-    daal::services::Atomic<vertex_t> *rows_cv =
-        new daal::services::Atomic<vertex_t>[layout_unfilt->_vertex_count + 1];
+    daal::services::Atomic<int_t> *rows_cv =
+        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count + 1];
     int_t total_sum_degrees = 0;
     rows_cv[0].set(total_sum_degrees);
 
@@ -195,13 +237,11 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     auto _rows_un                = layout_unfilt->_edge_offsets.data();
     auto _cols_un                = layout_unfilt->_vertex_neighbors.data();
 
-    daal::threader_for(layout_unfilt->_vertex_count + 1,
-                       layout_unfilt->_vertex_count + 1,
-                       [&](int n) {
-                           _rows_un[n] = rows_cv[n].get();
-                       });
+    threader_for(layout_unfilt->_vertex_count + 1, layout_unfilt->_vertex_count + 1, [&](int n) {
+        _rows_un[n] = rows_cv[n].get();
+    });
 
-    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+    threader_for(edges.size(), edges.size(), [&](int u) {
         _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
         _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
     });
@@ -215,7 +255,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     // layout->_degrees.resize(layout->_vertex_count);
 
     // vertex_t * vertex_neighs = layout_unfilt->_vertex_neighbors.data();
-    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+    threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
                   layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
         auto neighs_u_new_end = std::unique(
@@ -247,7 +287,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     layout->_vertex_neighbors =
         std::move(vector_vertex_t(layout->_edge_offsets[layout->_vertex_count]));
 
-    daal::threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
+    threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
         auto neighs = get_vertex_neighbors_impl(g_unfiltred, u);
         for (int_t i = 0; i < get_vertex_degree_impl(g, u); i++) {
             *(layout->_vertex_neighbors.begin() + layout->_edge_offsets[u] + i) =
@@ -257,7 +297,6 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     return /*ok*/;
 }
-
 template <typename VertexValue = empty_value,
           typename EdgeValue   = empty_value,
           typename GraphValue  = empty_value,
