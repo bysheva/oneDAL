@@ -190,6 +190,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     using vertex_t        = typename G::vertex_type;
     using vector_vertex_t = typename G::vertex_set;
     using vector_edge_t   = typename G::edge_set;
+    using allocator_t     = typename G::allocator_type;
 
     if (edges.size() == 0) {
         layout->_vertex_count = 0;
@@ -208,8 +209,13 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout_unfilt->_vertex_count = max_node_id + 1;
 
-    daal::services::Atomic<int_t> *degrees_cv =
-        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count];
+    using atomic_t = typename daal::services::Atomic<int_t>;
+    using allocator_atomic_t =
+        typename std::allocator_traits<allocator_t>::template rebind_alloc<atomic_t>;
+
+    auto *degrees_vec =
+        new detail::graph_container<atomic_t, allocator_atomic_t>(layout_unfilt->_vertex_count);
+    daal::services::Atomic<int_t> *degrees_cv = degrees_vec->data();
 
     threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         degrees_cv[u].set(0);
@@ -220,8 +226,10 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         degrees_cv[edges[u].second].inc();
     });
 
-    daal::services::Atomic<int_t> *rows_cv =
-        new daal::services::Atomic<int_t>[layout_unfilt->_vertex_count + 1];
+    auto *rows_vec =
+        new detail::graph_container<atomic_t, allocator_atomic_t>(layout_unfilt->_vertex_count + 1);
+    daal::services::Atomic<int_t> *rows_cv = rows_vec->data();
+
     int_t total_sum_degrees = 0;
     rows_cv[0].set(total_sum_degrees);
 
@@ -229,7 +237,7 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         total_sum_degrees += degrees_cv[i].get();
         rows_cv[i + 1].set(total_sum_degrees);
     }
-    delete[] degrees_cv;
+    delete degrees_vec;
 
     layout_unfilt->_vertex_neighbors =
         std::move(vector_vertex_t(rows_cv[layout_unfilt->_vertex_count].get()));
@@ -245,16 +253,14 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
         _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
         _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
     });
-    delete[] rows_cv;
+    delete rows_vec;
 
     //removing self-loops,  multiple edges from graph, and make neighbors in CSR sorted
 
     layout->_vertex_count = layout_unfilt->_vertex_count;
 
     layout->_degrees = std::move(vector_vertex_t(layout->_vertex_count));
-    // layout->_degrees.resize(layout->_vertex_count);
 
-    // vertex_t * vertex_neighs = layout_unfilt->_vertex_neighbors.data();
     threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
         std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
                   layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
@@ -271,7 +277,6 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
 
     layout->_edge_offsets.clear();
     layout->_edge_offsets.reserve(layout->_vertex_count + 1);
-    // layout->_edge_offsets.resize(layout->_vertex_count + 1);
 
     total_sum_degrees = 0;
     layout->_edge_offsets.push_back(total_sum_degrees);
@@ -282,8 +287,6 @@ void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
     }
     layout->_edge_count = layout->_edge_offsets[layout->_vertex_count] / 2;
 
-    // layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
-    // layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
     layout->_vertex_neighbors =
         std::move(vector_vertex_t(layout->_edge_offsets[layout->_vertex_count]));
 
