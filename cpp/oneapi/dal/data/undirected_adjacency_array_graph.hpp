@@ -19,6 +19,8 @@
 #include "oneapi/dal/data/detail/graph_container.hpp"
 #include "oneapi/dal/data/detail/undirected_adjacency_array_graph_impl.hpp"
 #include "oneapi/dal/data/graph_common.hpp"
+#include "services/daal_atomic_int.h"
+#include "src/threading/threading.h"
 
 namespace oneapi::dal::preview {
 
@@ -133,54 +135,127 @@ ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(const G &g, const vertex_type<G
     -> const_vertex_edge_range_type<G>;
 
 template <typename G>
-ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
-    auto layout    = detail::get_impl(g);
-    using int_t    = typename G::vertex_size_type;
-    using vertex_t = typename G::vertex_type;
+void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
+    auto layout           = detail::get_impl(g);
+    using int_t           = typename G::vertex_size_type;
+    using vertex_t        = typename G::vertex_type;
+    using vector_vertex_t = typename G::vertex_set;
+    using vector_edge_t   = typename G::edge_set;
+    using allocator_t     = typename G::allocator_type;
 
-    auto *pointer = layout->_allocator.allocate(2);
-    layout->_allocator.deallocate(pointer, 2);
-
-    layout->_vertex_count = 0;
-    layout->_edge_count   = 0;
-
-    vertex_t max_id = 0;
-
-    for (auto edge : edges) {
-        max_id = std::max(max_id, std::max(edge.first, edge.second));
-        layout->_edge_count += 1;
+    if (edges.size() == 0) {
+        layout->_vertex_count = 0;
+        layout->_edge_count   = 0;
+        return;
     }
 
-    layout->_vertex_count = max_id + 1;
-    int_t *degrees        = (int_t *)malloc(layout->_vertex_count * sizeof(int_t));
-    for (int_t u = 0; u < layout->_vertex_count; ++u) {
-        degrees[u] = 0;
+    G g_unfiltred;
+    auto layout_unfilt = detail::get_impl(g_unfiltred);
+
+    vertex_t max_node_id = edges[0].first;
+    for (auto u : edges) {
+        vertex_t max_id_in_edge = std::max(u.first, u.second);
+        max_node_id             = std::max(max_node_id, max_id_in_edge);
     }
 
-    for (auto edge : edges) {
-        degrees[edge.first]++;
-        degrees[edge.second]++;
-    }
+    layout_unfilt->_vertex_count = max_node_id + 1;
 
-    layout->_vertexes.resize(layout->_vertex_count + 1);
-    auto _rows              = layout->_vertexes.data();
+    using atomic_allocator_t = typename std::allocator_traits<allocator_t>::template rebind_alloc<
+        daal::services::Atomic<vertex_t>>;
+
+    auto &degrees_atomic =
+        std::move(detail::graph_container<daal::services::Atomic<vertex_t>, atomic_allocator_t>(
+            layout_unfilt->_vertex_count));
+    daal::services::Atomic<vertex_t> *degrees_cv = degrees_atomic.data();
+    // new daal::services::Atomic<vertex_t>[layout_unfilt->_vertex_count];
+
+    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+        degrees_cv[u].set(0);
+    });
+
+    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+        degrees_cv[edges[u].first].inc();
+        degrees_cv[edges[u].second].inc();
+    });
+
+    daal::services::Atomic<vertex_t> *rows_cv =
+        new daal::services::Atomic<vertex_t>[layout_unfilt->_vertex_count + 1];
     int_t total_sum_degrees = 0;
-    _rows[0]                = total_sum_degrees;
+    rows_cv[0].set(total_sum_degrees);
 
-    for (int_t i = 0; i < layout->_vertex_count; ++i) {
-        total_sum_degrees += degrees[i];
-        _rows[i + 1] = total_sum_degrees;
+    for (size_t i = 0; i < layout_unfilt->_vertex_count; ++i) {
+        total_sum_degrees += degrees_cv[i].get();
+        rows_cv[i + 1].set(total_sum_degrees);
     }
+    delete[] degrees_cv;
 
-    free(degrees);
-    layout->_edges.resize(_rows[layout->_vertex_count] + 1);
-    auto _cols = layout->_edges.data();
-    auto offests(layout->_vertexes);
+    layout_unfilt->_vertex_neighbors =
+        std::move(vector_vertex_t(rows_cv[layout_unfilt->_vertex_count].get()));
+    layout_unfilt->_edge_offsets = std::move(vector_edge_t(layout_unfilt->_vertex_count + 1));
+    auto _rows_un                = layout_unfilt->_edge_offsets.data();
+    auto _cols_un                = layout_unfilt->_vertex_neighbors.data();
 
-    for (auto edge : edges) {
-        _cols[offests[edge.first]++]  = edge.second;
-        _cols[offests[edge.second]++] = edge.first;
+    daal::threader_for(layout_unfilt->_vertex_count + 1,
+                       layout_unfilt->_vertex_count + 1,
+                       [&](int n) {
+                           _rows_un[n] = rows_cv[n].get();
+                       });
+
+    daal::threader_for(edges.size(), edges.size(), [&](int u) {
+        _cols_un[rows_cv[edges[u].first].inc() - 1]  = edges[u].second;
+        _cols_un[rows_cv[edges[u].second].inc() - 1] = edges[u].first;
+    });
+    delete[] rows_cv;
+
+    //removing self-loops,  multiple edges from graph, and make neighbors in CSR sorted
+
+    layout->_vertex_count = layout_unfilt->_vertex_count;
+
+    layout->_degrees = std::move(vector_vertex_t(layout->_vertex_count));
+    // layout->_degrees.resize(layout->_vertex_count);
+
+    // vertex_t * vertex_neighs = layout_unfilt->_vertex_neighbors.data();
+    daal::threader_for(layout_unfilt->_vertex_count, layout_unfilt->_vertex_count, [&](int u) {
+        std::sort(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+                  layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
+        auto neighs_u_new_end = std::unique(
+            layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+            layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u + 1]);
+        neighs_u_new_end =
+            std::remove(layout_unfilt->_vertex_neighbors.begin() + layout_unfilt->_edge_offsets[u],
+                        neighs_u_new_end,
+                        u);
+        layout->_degrees[u] = neighs_u_new_end - (layout_unfilt->_vertex_neighbors.begin() +
+                                                  layout_unfilt->_edge_offsets[u]);
+    });
+
+    layout->_edge_offsets.clear();
+    layout->_edge_offsets.reserve(layout->_vertex_count + 1);
+    // layout->_edge_offsets.resize(layout->_vertex_count + 1);
+
+    total_sum_degrees = 0;
+    layout->_edge_offsets.push_back(total_sum_degrees);
+
+    for (size_t i = 0; i < layout->_vertex_count; ++i) {
+        total_sum_degrees += layout->_degrees[i];
+        layout->_edge_offsets.push_back(total_sum_degrees);
     }
+    layout->_edge_count = layout->_edge_offsets[layout->_vertex_count] / 2;
+
+    // layout->_vertex_neighbors.reserve(layout->_edge_offsets[layout->_vertex_count]);
+    // layout->_vertex_neighbors.resize(layout->_edge_offsets[layout->_vertex_count]);
+    layout->_vertex_neighbors =
+        std::move(vector_vertex_t(layout->_edge_offsets[layout->_vertex_count]));
+
+    daal::threader_for(layout->_vertex_count, layout->_vertex_count, [&](int u) {
+        auto neighs = get_vertex_neighbors_impl(g_unfiltred, u);
+        for (int_t i = 0; i < get_vertex_degree_impl(g, u); i++) {
+            *(layout->_vertex_neighbors.begin() + layout->_edge_offsets[u] + i) =
+                *(neighs.first + i);
+        }
+    });
+
+    return /*ok*/;
 }
 
 template <typename VertexValue = empty_value,
