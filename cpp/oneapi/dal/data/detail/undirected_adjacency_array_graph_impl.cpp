@@ -18,6 +18,19 @@
 
 namespace oneapi::dal::preview {
 
+template <typename VertexValue,
+          typename EdgeValue,
+          typename GraphValue,
+          typename IndexType,
+          typename Allocator>
+detail::undirected_adjacency_array_graph_impl<
+    VertexValue,
+    EdgeValue,
+    GraphValue,
+    IndexType,
+    Allocator>::undirected_adjacency_array_graph_impl(allocator_type alloc)
+        : _allocator(alloc) {}
+
 template class ONEAPI_DAL_EXPORT
     detail::undirected_adjacency_array_graph_impl<empty_value,
                                                   empty_value,

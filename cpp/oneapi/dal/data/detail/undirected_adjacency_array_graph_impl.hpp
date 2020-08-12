@@ -45,12 +45,19 @@ public:
     using edge_size_type = typename edge_set::size_type;
 
     using vertex_user_value_type = VertexValue;
-    using vertex_user_value_set  = detail::graph_container<vertex_user_value_type, allocator_type>;
+    using vertex_user_value_type_allocator =
+        typename std::allocator_traits<Allocator>::template rebind_alloc<vertex_user_value_type>;
+    using vertex_user_value_set =
+        detail::graph_container<vertex_user_value_type, vertex_user_value_type_allocator>;
 
     using edge_user_value_type = EdgeValue;
-    using edge_value_set       = detail::graph_container<edge_user_value_type, allocator_type>;
+    using edge_user_value_type_allocator =
+        typename std::allocator_traits<Allocator>::template rebind_alloc<edge_user_value_type>;
+    using edge_value_set =
+        detail::graph_container<edge_user_value_type, edge_user_value_type_allocator>;
 
     undirected_adjacency_array_graph_impl() = default;
+    undirected_adjacency_array_graph_impl(allocator_type alloc);
 
     vertex_size_type _vertex_count;
     edge_size_type _edge_count;
@@ -60,5 +67,7 @@ public:
 
     vertex_user_value_set _vertex_value;
     edge_value_set _edge_value;
+
+    allocator_type _allocator;
 };
 } // namespace oneapi::dal::preview::detail

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "oneapi/dal/common.hpp"
+#include "oneapi/dal/data/detail/graph_container.hpp"
 #include "oneapi/dal/detail/common.hpp"
 
 /**
@@ -75,5 +76,8 @@ using const_vertex_edge_range_type = typename G::const_vertex_edge_range;
 
 template <typename IndexType = std::int32_t>
 using edge_list = detail::graph_container<std::pair<IndexType, IndexType>>;
+
+template <typename G>
+using graph_allocator = typename G::allocator_type;
 
 } // namespace oneapi::dal::preview

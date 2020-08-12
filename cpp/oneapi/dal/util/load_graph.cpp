@@ -18,30 +18,13 @@
 
 namespace oneapi::dal::preview::load_graph {
 
-namespace detail {
-edge_list<std::int32_t> load_edge_list(const std::string &name) {
-    using int_t = std::int32_t;
-    edge_list<int_t> elist;
-    std::ifstream file(name);
-    int_t source_vertex      = 0;
-    int_t destination_vertex = 0;
-    while (file >> source_vertex >> destination_vertex) {
-        auto edge = std::make_pair(source_vertex, destination_vertex);
-        elist.push_back(edge);
-    }
+// template struct ONEAPI_DAL_EXPORT
+//     descriptor<edge_list<int32_t>,
+//                std::allocator<empty_value>,
+//                undirected_adjacency_array_graph<empty_value,
+//                                                 empty_value,
+//                                                 empty_value,
+//                                                 std::int32_t,
+//                                                 std::allocator<empty_value>>>;
 
-    file.close();
-    return elist;
-}
-} // namespace detail
-
-template struct ONEAPI_DAL_EXPORT
-    descriptor<edge_list<int32_t>, undirected_adjacency_array_graph<>>;
-
-template <>
-output_type<descriptor<>> load(const descriptor<> &d, const csv_data_source &ds) {
-    output_type<descriptor<>> graph_data;
-    convert_to_csr_impl(detail::load_edge_list(ds.get_filename()), graph_data);
-    return graph_data;
-}
 } // namespace oneapi::dal::preview::load_graph

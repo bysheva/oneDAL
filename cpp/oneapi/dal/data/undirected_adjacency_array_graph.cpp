@@ -18,18 +18,31 @@
 
 namespace oneapi::dal::preview {
 
-template <typename VertexValue,
-          typename EdgeValue,
-          typename GraphValue,
-          typename IndexType,
-          typename Allocator>
-undirected_adjacency_array_graph<VertexValue, EdgeValue, GraphValue, IndexType, Allocator>::
-    undirected_adjacency_array_graph()
-        : impl_(new detail::undirected_adjacency_array_graph_impl<VertexValue,
-                                                                  EdgeValue,
-                                                                  GraphValue,
-                                                                  IndexType,
-                                                                  Allocator>) {}
+// template <typename VertexValue,
+//           typename EdgeValue,
+//           typename GraphValue,
+//           typename IndexType,
+//           typename Allocator>
+// undirected_adjacency_array_graph<VertexValue, EdgeValue, GraphValue, IndexType, Allocator>::
+//     undirected_adjacency_array_graph()
+//         : impl_(new detail::undirected_adjacency_array_graph_impl<VertexValue,
+//                                                                   EdgeValue,
+//                                                                   GraphValue,
+//                                                                   IndexType,
+//                                                                   Allocator>) {}
+
+// template <typename VertexValue,
+//           typename EdgeValue,
+//           typename GraphValue,
+//           typename IndexType,
+//           typename Allocator>
+// undirected_adjacency_array_graph<VertexValue, EdgeValue, GraphValue, IndexType, Allocator>::
+//     undirected_adjacency_array_graph(allocator_type alloc)
+//         : impl_(new detail::undirected_adjacency_array_graph_impl<VertexValue,
+//                                                                   EdgeValue,
+//                                                                   GraphValue,
+//                                                                   IndexType,
+//                                                                   Allocator>(alloc)) {}
 
 template class ONEAPI_DAL_EXPORT undirected_adjacency_array_graph<empty_value,
                                                                   empty_value,
@@ -86,55 +99,7 @@ template ONEAPI_DAL_EXPORT const_vertex_edge_range_type<graph32> get_vertex_neig
     const graph32 &g,
     const vertex_type<graph32> &vertex);
 
-template <typename G>
-ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<G>> &edges, G &g) {
-    auto layout    = detail::get_impl(g);
-    using int_t    = typename G::vertex_size_type;
-    using vertex_t = typename G::vertex_type;
-
-    layout->_vertex_count = 0;
-    layout->_edge_count   = 0;
-
-    vertex_t max_id = 0;
-
-    for (auto edge : edges) {
-        max_id = std::max(max_id, std::max(edge.first, edge.second));
-        layout->_edge_count += 1;
-    }
-
-    layout->_vertex_count = max_id + 1;
-    int_t *degrees        = (int_t *)malloc(layout->_vertex_count * sizeof(int_t));
-    for (int_t u = 0; u < layout->_vertex_count; ++u) {
-        degrees[u] = 0;
-    }
-
-    for (auto edge : edges) {
-        degrees[edge.first]++;
-        degrees[edge.second]++;
-    }
-
-    layout->_vertexes.resize(layout->_vertex_count + 1);
-    auto _rows              = layout->_vertexes.data();
-    int_t total_sum_degrees = 0;
-    _rows[0]                = total_sum_degrees;
-
-    for (int_t i = 0; i < layout->_vertex_count; ++i) {
-        total_sum_degrees += degrees[i];
-        _rows[i + 1] = total_sum_degrees;
-    }
-
-    free(degrees);
-    layout->_edges.resize(_rows[layout->_vertex_count] + 1);
-    auto _cols = layout->_edges.data();
-    auto offests(layout->_vertexes);
-
-    for (auto edge : edges) {
-        _cols[offests[edge.first]++]  = edge.second;
-        _cols[offests[edge.second]++] = edge.first;
-    }
-}
-
-template ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<graph32>> &edges,
-                                                    graph32 &g);
+// template ONEAPI_DAL_EXPORT void convert_to_csr_impl(const edge_list<vertex_type<graph32>> &edges,
+//                                                     graph32 &g);
 
 } // namespace oneapi::dal::preview
