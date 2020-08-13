@@ -20,6 +20,7 @@
 #include "oneapi/dal/data/detail/undirected_adjacency_array_graph_impl.hpp"
 #include "oneapi/dal/data/graph_common.hpp"
 #include "services/daal_atomic_int.h"
+#include "services/daal_memory.h"
 // #include "src/threading/threading.h"
 
 namespace oneapi::dal::preview {

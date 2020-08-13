@@ -17,6 +17,7 @@
 #pragma once
 
 #include <fstream>
+// #include <istream>
 
 #include "oneapi/dal/data/graph_common.hpp"
 #include "oneapi/dal/data/undirected_adjacency_array_graph.hpp"
@@ -43,12 +44,24 @@ using output_type = typename Descriptor::output_type;
 namespace detail {
 edge_list<std::int32_t> load_edge_list(const std::string &name) {
     using int_t = std::int32_t;
-    edge_list<int_t> elist;
+
     std::ifstream file(name);
-    int_t source_vertex      = 0;
-    int_t destination_vertex = 0;
+    std::string line;
+
+    int_t lines = 0;
+    while (std::getline(file, line)) {
+        lines++;
+    }
+    file.clear();
+    file.seekg(0, std::ios_base::beg);
+
+    char source_vertex[32], destination_vertex[32];
+
+    edge_list<int_t> elist;
+    elist.reserve(lines);
     while (file >> source_vertex >> destination_vertex) {
-        auto edge = std::make_pair(source_vertex, destination_vertex);
+        auto edge = std::make_pair(daal::services::daal_string_to_int(&source_vertex[0], 0),
+                                   daal::services::daal_string_to_int(&destination_vertex[0], 0));
         elist.push_back(edge);
     }
 
