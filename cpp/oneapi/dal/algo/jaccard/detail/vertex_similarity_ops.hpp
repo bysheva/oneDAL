@@ -27,8 +27,11 @@ namespace detail {
 template <typename Policy, typename Float, class Method, typename Graph>
 struct ONEAPI_DAL_EXPORT vertex_similarity_ops_dispatcher {
     similarity_result operator()(const Policy &policy,
-                                 const descriptor_base &descriptor,
-                                 const similarity_input<Graph> &input) const;
+                                 const descriptor_base &desc,
+                                 const similarity_input<Graph> &input) const {
+        static auto impl = get_backend<Float, Method>(desc, input);
+        return (*impl)(oneapi::dal::backend::context_cpu{ policy }, desc, input);
+    }
 };
 
 template <typename Descriptor, typename Graph>

@@ -17,6 +17,7 @@
 #pragma once
 
 #include "oneapi/dal/algo/jaccard/common.hpp"
+#include "oneapi/dal/algo/jaccard/detail/vertex_similarity_types_impl.hpp"
 #include "oneapi/dal/data/table.hpp"
 #include "oneapi/dal/data/undirected_adjacency_array_graph.hpp"
 
@@ -24,15 +25,15 @@ namespace oneapi::dal::preview {
 namespace jaccard {
 
 namespace detail {
-template <typename Graph>
-class similarity_input_impl;
+// // template <typename Graph>
+// // class similarity_input_impl;
 class similarity_result_impl;
 } // namespace detail
 
 template <typename Graph>
 class ONEAPI_DAL_EXPORT similarity_input {
 public:
-    similarity_input(const Graph &g);
+    similarity_input(const Graph &g) : impl_(new detail::similarity_input_impl<Graph>(g)) {}
     const Graph &get_graph() const;
 
 private:
