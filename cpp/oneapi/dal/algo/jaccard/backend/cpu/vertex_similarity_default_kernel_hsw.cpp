@@ -28,13 +28,14 @@ namespace jaccard {
 namespace detail {
 
 template <>
-similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &,
+similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
                                             oneapi::dal::backend::cpu_dispatch_avx2>(
     const descriptor_base &desc,
-    const similarity_input<undirected_adjacency_array_graph<> &> &input) {
+    similarity_input<undirected_adjacency_array_graph<>> &input) {
     std::cout << "Hi! I am avx2 specialization!" << std::endl;
     __m256i circ2       = _mm256_set_epi32(1, 0, 7, 6, 5, 4, 3, 2);
     const auto my_graph = input.get_graph();
+
 
     std::cout << oneapi::dal::preview::detail::get_vertex_count_impl(my_graph) << std::endl;
     std::cout << oneapi::dal::preview::detail::get_edge_count_impl(my_graph) << std::endl;
@@ -55,10 +56,10 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &
     const auto column_begin             = desc.get_column_range_begin();
     const auto column_end               = desc.get_column_range_end();
     const auto number_elements_in_block = (row_end - row_begin) * (column_end - column_begin);
-    array<float> jaccard                = array<float>::empty(number_elements_in_block);
-    array<std::pair<std::uint32_t, std::uint32_t>> vertex_pairs =
-        array<std::pair<std::uint32_t, std::uint32_t>>::empty(number_elements_in_block);
-    size_t nnz = 0;
+    int * vertex1 = reinterpret_cast<int*>(input.get_result_ptr());
+    int * vertex2 = vertex1 + number_elements_in_block;
+    float * jaccard = reinterpret_cast<float*>(vertex1 + 2 * number_elements_in_block);
+    int64_t nnz = 0;
     for (auto i = row_begin; i < row_end; ++i) {
         const auto i_neighbor_size =
             oneapi::dal::preview::detail::get_vertex_degree_impl(my_graph, i);
@@ -87,24 +88,29 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &
             const auto union_size = i_neighbor_size + j_neighbor_size - intersection_value;
             if (union_size == 0)
                 continue;
-            jaccard[nnz]      = float(intersection_value) / float(union_size);
-            vertex_pairs[nnz] = std::make_pair(i, j);
+            jaccard[nnz] = float(intersection_value) / float(union_size);
+            vertex1[nnz] = i;
+            vertex2[nnz] =  j;
             nnz++;
         }
     }
-    jaccard.reset(nnz);
-    vertex_pairs.reset(nnz);
-
-    similarity_result res(homogen_table_builder{}.build(), homogen_table_builder{}.build());
-
+    //similarity_result res;
+    
+    similarity_result res(homogen_table_builder{}.reset(array(vertex1, 2 * number_elements_in_block, empty_delete<const int>()), 2, number_elements_in_block).build(), 
+                          homogen_table_builder{}.reset(array(jaccard, number_elements_in_block, empty_delete<const float>()), 1, number_elements_in_block).build(),
+                          nnz);
+    
+    /*
+    similarity_result res(homogen_table(2, number_elements_in_block, vertex1),
+                          homogen_table(1, number_elements_in_block, jaccard), nnz);*/
     std::cout << "Jaccard block kernel ended" << std::endl;
     return res;
 }
 #define INSTANTIATE(cpu)                                                  \
     template similarity_result                                            \
-    call_jaccard_block_kernel<undirected_adjacency_array_graph<> &, cpu>( \
+    call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
         const descriptor_base &desc,                                      \
-        const similarity_input<undirected_adjacency_array_graph<> &> &input);
+        similarity_input<undirected_adjacency_array_graph<>> &input);
 
 INSTANTIATE(oneapi::dal::backend::cpu_dispatch_avx2)
 } // namespace detail

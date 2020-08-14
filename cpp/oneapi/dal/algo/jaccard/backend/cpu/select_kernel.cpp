@@ -25,19 +25,19 @@ template <typename Float, typename Method, typename Graph>
 similarity_result backend_default<Float, Method, Graph>::operator()(
     const dal::backend::context_cpu &ctx,
     const descriptor_base &desc,
-    const similarity_input<Graph> &input) {
+    similarity_input<Graph> &input) {
     return dal::backend::dispatch_by_cpu(ctx, [&](auto cpu) {
         return call_jaccard_block_kernel<Graph, decltype(cpu)>(desc, input);
     });
 }
 
 template <>
-dal::detail::pimpl<backend_base<undirected_adjacency_array_graph<> &>>
-get_backend<float, method::by_default, undirected_adjacency_array_graph<> &>(
+dal::detail::pimpl<backend_base<undirected_adjacency_array_graph<>>>
+get_backend<float, method::by_default, undirected_adjacency_array_graph<>>(
     const descriptor_base &desc,
-    const similarity_input<undirected_adjacency_array_graph<> &> &input) {
-    return dal::detail::pimpl<backend_base<undirected_adjacency_array_graph<> &>>(
-        new backend_default<float, method::by_default, undirected_adjacency_array_graph<> &>);
+    similarity_input<undirected_adjacency_array_graph<>> &input) {
+    return dal::detail::pimpl<backend_base<undirected_adjacency_array_graph<>>>(
+        new backend_default<float, method::by_default, undirected_adjacency_array_graph<>>);
 }
 } // namespace detail
 } // namespace jaccard

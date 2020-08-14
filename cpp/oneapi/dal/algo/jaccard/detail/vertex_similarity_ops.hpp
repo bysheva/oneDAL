@@ -28,7 +28,7 @@ template <typename Policy, typename Float, class Method, typename Graph>
 struct ONEAPI_DAL_EXPORT vertex_similarity_ops_dispatcher {
     similarity_result operator()(const Policy &policy,
                                  const descriptor_base &descriptor,
-                                 const similarity_input<Graph> &input) const;
+                                 similarity_input<Graph> &input) const;
 };
 
 template <typename Descriptor, typename Graph>
@@ -42,7 +42,7 @@ struct vertex_similarity_ops {
     template <typename Policy>
     auto operator()(const Policy &policy,
                     const Descriptor &desc,
-                    const similarity_input<Graph> &input) const {
+                    similarity_input<Graph> &input) const {
         return vertex_similarity_ops_dispatcher<Policy, float_t, method_t, Graph>()(policy,
                                                                                     desc,
                                                                                     input);

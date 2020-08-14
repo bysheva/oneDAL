@@ -31,6 +31,12 @@
 
 namespace oneapi::dal {
 
+template <typename T>
+class empty_delete {
+public:
+    void operator()(T*) const noexcept {}
+};
+
 using byte_t = std::uint8_t;
 
 class base {

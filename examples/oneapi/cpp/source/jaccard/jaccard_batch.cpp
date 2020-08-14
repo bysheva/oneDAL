@@ -21,6 +21,7 @@
 #include "oneapi/dal/data/table.hpp"
 #include "oneapi/dal/util/csv_data_source.hpp"
 #include "oneapi/dal/util/load_graph.hpp"
+#include "example_util/utils.hpp"
 
 using namespace oneapi::dal;
 using namespace oneapi::dal::preview;
@@ -31,14 +32,19 @@ int main(int argc, char **argv) {
     csv_data_source ds(filename);
     load_graph::descriptor<> d;
     auto my_graph = load_graph::load(d, ds);
-
+    int* a = new int[100];
     const auto jaccard_desc_default = jaccard::descriptor<>().set_block({0, 2},{0,3});
 
-    auto result_default = vertex_similarity(jaccard_desc_default, my_graph);
+    auto result_default = vertex_similarity(jaccard_desc_default, my_graph, static_cast<void*>(a));
 
     auto jaccard = result_default.get_coeffs();
     auto vertex_pairs = result_default.get_vertex_pairs();
 
+    std::cout <<"Number of nnz: " << result_default.get_nonzero_coeff_count() << std::endl;
+    std::cout << "Jaccard values: " << std::endl;
+    std::cout << jaccard << std::endl;
+    std::cout << "Vertex pairs: " <<std::endl;
+    std::cout << vertex_pairs << std::endl;
     /*
     std::cout << "Number of non-zero coefficients in block =" << jaccard.get_size() << std::endl;
     std::cout << "Jaccard indices:" << std::endl;

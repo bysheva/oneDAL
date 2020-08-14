@@ -32,8 +32,9 @@ class similarity_result_impl;
 template <typename Graph>
 class ONEAPI_DAL_EXPORT similarity_input {
 public:
-    similarity_input(const Graph &g);
+    similarity_input(const Graph &g, void* result_ptr);
     const Graph &get_graph() const;
+    void* get_result_ptr();
 
 private:
     dal::detail::pimpl<detail::similarity_input_impl<Graph>> impl_;
@@ -42,9 +43,10 @@ private:
 class ONEAPI_DAL_EXPORT similarity_result {
 public:
     similarity_result(){};
-    similarity_result(const table &vertex_pairs, const table &coeffs);
+    similarity_result(const table &vertex_pairs, const table &coeffs, int64_t& nonzero_coeff_count);
     table get_coeffs() const;
     table get_vertex_pairs() const;
+    int64_t get_nonzero_coeff_count() const;
 
 private:
     dal::detail::pimpl<detail::similarity_result_impl> impl_;

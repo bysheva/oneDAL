@@ -30,10 +30,10 @@ namespace jaccard {
 namespace detail {
 
 template <>
-similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &,
+similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
                                             oneapi::dal::backend::cpu_dispatch_avx512>(
     const descriptor_base &desc,
-    const similarity_input<undirected_adjacency_array_graph<> &> &input) {
+    similarity_input<undirected_adjacency_array_graph<>> &input) {
     std::cout << "Hi! I am avx512 specialization!" << std::endl;
 
     const auto my_graph = input.get_graph();
@@ -60,7 +60,7 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &
     array<float> jaccard                = array<float>::empty(number_elements_in_block);
     array<std::pair<std::uint32_t, std::uint32_t>> vertex_pairs =
         array<std::pair<std::uint32_t, std::uint32_t>>::empty(number_elements_in_block);
-    size_t nnz = 0;
+    int64_t nnz = 0;
     for (auto i = row_begin; i < row_end; ++i) {
         const auto i_neighbor_size =
             oneapi::dal::preview::detail::get_vertex_degree_impl(my_graph, i);
@@ -97,7 +97,7 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &
     jaccard.reset(nnz);
     vertex_pairs.reset(nnz);
 
-    similarity_result res(homogen_table_builder{}.build(), homogen_table_builder{}.build());
+    similarity_result res(homogen_table_builder{}.build(), homogen_table_builder{}.build(), nnz);
 
     std::cout << "Jaccard block kernel ended" << std::endl;
     return res;
@@ -105,9 +105,9 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<> &
 
 #define INSTANTIATE(cpu)                                                  \
     template similarity_result                                            \
-    call_jaccard_block_kernel<undirected_adjacency_array_graph<> &, cpu>( \
+    call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
         const descriptor_base &desc,                                      \
-        const similarity_input<undirected_adjacency_array_graph<> &> &input);
+        similarity_input<undirected_adjacency_array_graph<>> &input);
 
 INSTANTIATE(oneapi::dal::backend::cpu_dispatch_avx512)
 } // namespace detail
