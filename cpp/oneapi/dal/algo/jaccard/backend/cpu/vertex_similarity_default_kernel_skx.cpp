@@ -57,10 +57,11 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
     const auto column_begin             = desc.get_column_range_begin();
     const auto column_end               = desc.get_column_range_end();
     const auto number_elements_in_block = (row_end - row_begin) * (column_end - column_begin);
-    array<float> jaccard                = array<float>::empty(number_elements_in_block);
-    array<std::pair<std::uint32_t, std::uint32_t>> vertex_pairs =
-        array<std::pair<std::uint32_t, std::uint32_t>>::empty(number_elements_in_block);
-    int64_t nnz = 0;
+
+    int *vertex1                        = reinterpret_cast<int *>(input.get_result_ptr());
+    int *vertex2                        = vertex1 + number_elements_in_block;
+    float *jaccard = reinterpret_cast<float *>(vertex1 + 2 * number_elements_in_block);
+    int64_t nnz    = 0;
     for (auto i = row_begin; i < row_end; ++i) {
         const auto i_neighbor_size =
             oneapi::dal::preview::detail::get_vertex_degree_impl(my_graph, i);
@@ -75,7 +76,7 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
                 oneapi::dal::preview::detail::get_vertex_neighbors_impl(my_graph, j).first;
             size_t intersection_value = 0;
             size_t i_u = 0, i_v = 0;
-            __m512i circ1 = _mm512_set_epi32(0, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+            //__m512i v_u   = _mm512_loadu_si512((void *)(i_neigbhors + i_u)); // load 16 neighbors of u
             while (i_u < i_neighbor_size && i_v < j_neighbor_size) {
                 if (i_neigbhors[i_u] == j_neigbhors[i_v])
                     intersection_value++, i_u++, i_v++;
@@ -89,16 +90,30 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
             const auto union_size = i_neighbor_size + j_neighbor_size - intersection_value;
             if (union_size == 0)
                 continue;
-            jaccard[nnz]      = float(intersection_value) / float(union_size);
-            vertex_pairs[nnz] = std::make_pair(i, j);
+            jaccard[nnz] = float(intersection_value) / float(union_size);
+            vertex1[nnz] = i;
+            vertex2[nnz] = j;
             nnz++;
         }
     }
-    jaccard.reset(nnz);
-    vertex_pairs.reset(nnz);
+    //similarity_result res;
 
-    similarity_result res(homogen_table_builder{}.build(), homogen_table_builder{}.build(), nnz);
+    similarity_result res(
+        homogen_table_builder{}
+            .reset(array(vertex1, 2 * number_elements_in_block, empty_delete<const int>()),
+                   2,
+                   number_elements_in_block)
+            .build(),
+        homogen_table_builder{}
+            .reset(array(jaccard, number_elements_in_block, empty_delete<const float>()),
+                   1,
+                   number_elements_in_block)
+            .build(),
+        nnz);
 
+    /*
+    similarity_result res(homogen_table(2, number_elements_in_block, vertex1),
+                          homogen_table(1, number_elements_in_block, jaccard), nnz);*/
     std::cout << "Jaccard block kernel ended" << std::endl;
     return res;
 }
