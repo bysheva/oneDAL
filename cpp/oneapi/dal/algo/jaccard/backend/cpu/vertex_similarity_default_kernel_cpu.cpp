@@ -99,10 +99,9 @@ similarity_result call_jaccard_block_kernel(const descriptor_base &desc,
     return res;
 }
 
-#define INSTANTIATE(cpu)                                                  \
-    template similarity_result                                            \
-    call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
-        const descriptor_base &desc,                                      \
+#define INSTANTIATE(cpu)                                                                           \
+    template similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
+        const descriptor_base &desc,                                                               \
         similarity_input<undirected_adjacency_array_graph<>> &input);
 
 INSTANTIATE(__CPU_TAG__)

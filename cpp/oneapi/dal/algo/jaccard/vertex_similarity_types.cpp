@@ -22,16 +22,18 @@ namespace jaccard {
 template <typename Graph>
 class detail::similarity_input_impl : public base {
 public:
-    similarity_input_impl(const Graph &graph_data_input, void* result_ptr_input) : graph_data(graph_data_input), result_ptr(result_ptr_input) {}
+    similarity_input_impl(const Graph &graph_data_input, void *result_ptr_input)
+            : graph_data(graph_data_input),
+              result_ptr(result_ptr_input) {}
 
     const Graph &graph_data;
-    void* result_ptr;
+    void *result_ptr;
 };
 
 using detail::similarity_input_impl;
 
 template <typename Graph>
-similarity_input<Graph>::similarity_input(const Graph &data, void* result_ptr_input)
+similarity_input<Graph>::similarity_input(const Graph &data, void *result_ptr_input)
         : impl_(new similarity_input_impl<Graph>(data, result_ptr_input)) {}
 
 template <typename Graph>
@@ -40,15 +42,18 @@ const Graph &similarity_input<Graph>::get_graph() const {
 }
 
 template <typename Graph>
-void* similarity_input<Graph>::get_result_ptr() {
+void *similarity_input<Graph>::get_result_ptr() {
     return impl_->result_ptr;
 }
 
 class detail::similarity_result_impl : public base {
 public:
-    similarity_result_impl(const table &vertex_pairs, const table &coeffs, int64_t& nonzero_coeff_count)
+    similarity_result_impl(const table &vertex_pairs,
+                           const table &coeffs,
+                           int64_t &nonzero_coeff_count)
             : coeffs(coeffs),
-              vertex_pairs(vertex_pairs), nonzero_coeff_count(nonzero_coeff_count) {}
+              vertex_pairs(vertex_pairs),
+              nonzero_coeff_count(nonzero_coeff_count) {}
 
     table coeffs;
     table vertex_pairs;
@@ -61,7 +66,9 @@ template class ONEAPI_DAL_EXPORT similarity_input<undirected_adjacency_array_gra
 
 using detail::similarity_result_impl;
 
-similarity_result::similarity_result(const table &vertex_pairs, const table &coeffs, int64_t& nonzero_coeff_count)
+similarity_result::similarity_result(const table &vertex_pairs,
+                                     const table &coeffs,
+                                     int64_t &nonzero_coeff_count)
         : impl_(new similarity_result_impl(vertex_pairs, coeffs, nonzero_coeff_count)) {}
 
 table similarity_result::get_coeffs() const {

@@ -36,7 +36,6 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
     __m256i circ2       = _mm256_set_epi32(1, 0, 7, 6, 5, 4, 3, 2);
     const auto my_graph = input.get_graph();
 
-
     std::cout << oneapi::dal::preview::detail::get_vertex_count_impl(my_graph) << std::endl;
     std::cout << oneapi::dal::preview::detail::get_edge_count_impl(my_graph) << std::endl;
     auto node_id = 0;
@@ -56,10 +55,10 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
     const auto column_begin             = desc.get_column_range_begin();
     const auto column_end               = desc.get_column_range_end();
     const auto number_elements_in_block = (row_end - row_begin) * (column_end - column_begin);
-    int * vertex1 = reinterpret_cast<int*>(input.get_result_ptr());
-    int * vertex2 = vertex1 + number_elements_in_block;
-    float * jaccard = reinterpret_cast<float*>(vertex1 + 2 * number_elements_in_block);
-    int64_t nnz = 0;
+    int *vertex1                        = reinterpret_cast<int *>(input.get_result_ptr());
+    int *vertex2                        = vertex1 + number_elements_in_block;
+    float *jaccard = reinterpret_cast<float *>(vertex1 + 2 * number_elements_in_block);
+    int64_t nnz    = 0;
     for (auto i = row_begin; i < row_end; ++i) {
         const auto i_neighbor_size =
             oneapi::dal::preview::detail::get_vertex_degree_impl(my_graph, i);
@@ -90,26 +89,34 @@ similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>,
                 continue;
             jaccard[nnz] = float(intersection_value) / float(union_size);
             vertex1[nnz] = i;
-            vertex2[nnz] =  j;
+            vertex2[nnz] = j;
             nnz++;
         }
     }
     //similarity_result res;
-    
-    similarity_result res(homogen_table_builder{}.reset(array(vertex1, 2 * number_elements_in_block, empty_delete<const int>()), 2, number_elements_in_block).build(), 
-                          homogen_table_builder{}.reset(array(jaccard, number_elements_in_block, empty_delete<const float>()), 1, number_elements_in_block).build(),
-                          nnz);
-    
+
+    similarity_result res(
+        homogen_table_builder{}
+            .reset(array(vertex1, 2 * number_elements_in_block, empty_delete<const int>()),
+                   2,
+                   number_elements_in_block)
+            .build(),
+        homogen_table_builder{}
+            .reset(array(jaccard, number_elements_in_block, empty_delete<const float>()),
+                   1,
+                   number_elements_in_block)
+            .build(),
+        nnz);
+
     /*
     similarity_result res(homogen_table(2, number_elements_in_block, vertex1),
                           homogen_table(1, number_elements_in_block, jaccard), nnz);*/
     std::cout << "Jaccard block kernel ended" << std::endl;
     return res;
 }
-#define INSTANTIATE(cpu)                                                  \
-    template similarity_result                                            \
-    call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
-        const descriptor_base &desc,                                      \
+#define INSTANTIATE(cpu)                                                                           \
+    template similarity_result call_jaccard_block_kernel<undirected_adjacency_array_graph<>, cpu>( \
+        const descriptor_base &desc,                                                               \
         similarity_input<undirected_adjacency_array_graph<>> &input);
 
 INSTANTIATE(oneapi::dal::backend::cpu_dispatch_avx2)
