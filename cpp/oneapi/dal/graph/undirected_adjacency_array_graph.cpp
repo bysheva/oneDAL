@@ -142,6 +142,11 @@ using graph_default = undirected_adjacency_array_graph<empty_value,
 
 namespace detail {
 
+template ONEAPI_DAL_EXPORT typename graph_default::pimpl &get_impl(graph_default &graph);
+
+template ONEAPI_DAL_EXPORT const typename graph_default::pimpl &get_impl(
+    const graph_default &graph);
+
 template <typename Graph>
 ONEAPI_DAL_EXPORT auto get_vertex_count_impl(const Graph &graph) noexcept
     -> vertex_size_type<Graph> {
