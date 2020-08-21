@@ -48,9 +48,11 @@ DAAL_FORCEINLINE std::size_t intersection(std::int32_t *neigh_u,
     return total;
 }
 
-template <typename Graph, typename Cpu>
-vertex_similarity_result call_jaccard_default_kernel(const descriptor_base &desc,
-                                                     vertex_similarity_input<Graph> &input) {
+template <>
+vertex_similarity_result
+call_jaccard_default_kernel<undirected_adjacency_array_graph<>, __CPU_TAG__>(
+    const descriptor_base &desc,
+    vertex_similarity_input<undirected_adjacency_array_graph<>> &input) {
     const auto &my_graph         = input.get_graph();
     const auto &g                = oneapi::dal::preview::detail::get_impl(my_graph);
     auto g_edge_offsets          = g->_edge_offsets.data();
@@ -119,7 +121,7 @@ vertex_similarity_result call_jaccard_default_kernel(const descriptor_base &desc
                                  nnz);
     return res;
 }
-
+/*
 #define INSTANTIATE(cpu)                                                  \
     template vertex_similarity_result                                     \
     call_jaccard_default_kernel<undirected_adjacency_array_graph<>, cpu>( \
@@ -127,6 +129,7 @@ vertex_similarity_result call_jaccard_default_kernel(const descriptor_base &desc
         vertex_similarity_input<undirected_adjacency_array_graph<>> &input);
 
 INSTANTIATE(__CPU_TAG__)
+*/
 } // namespace detail
 } // namespace jaccard
 } // namespace oneapi::dal::preview
