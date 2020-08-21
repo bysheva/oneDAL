@@ -14,7 +14,9 @@
 * limitations under the License.
 *******************************************************************************/
 
+#include <chrono>
 #include <iostream>
+
 
 #include "tbb/global_control.h"
 #include "tbb/parallel_for.h"
@@ -30,7 +32,7 @@
 using namespace oneapi::dal;
 using namespace oneapi::dal::preview;
 using namespace std;
-
+using namespace std::chrono;
 /// Computes Jaccard similarity coefficients for the graph. The upper triangular
 /// matrix is processed only as it is symmetic for undirected graph.
 ///
@@ -43,25 +45,56 @@ void vertex_similarity_block_processing(const Graph &g,
                                         const int32_t block_column_count);
 
 int main(int argc, char **argv) {
-  // load the graph
-  std::string filename = get_data_path("graph.csv");
-  csv_data_source ds(filename);
+ // read the graph
+    if (argc < 2) return 0;
+    std::string filename = argv[1];
+    csv_data_source ds(filename);
   load_graph::descriptor<> d;
-  auto graph = load_graph::load(d, ds);
+  auto my_graph = load_graph::load(d, ds);
 
-  // set the block sizes for Jaccard similarity block processing
-  int32_t block_row_count = 2;
-  int32_t block_column_count = 5;
 
-  // set the number of threads
-  int32_t tbb_threads_number = 4;
-  tbb::global_control c(tbb::global_control::max_allowed_parallelism,
-                        tbb_threads_number);
 
-  // compute Jaccard similarity coefficients for the graph
-  vertex_similarity_block_processing(graph, block_row_count, block_column_count);
+    int num_trials_custom = 1;
+    int num_trials_lib = 1;
 
+    int32_t row_size = 1;
+    int32_t column_size = 1024;
+
+    int32_t tbb_threads_number = 1;
+
+    if (argc > 5) {
+        row_size = stoi(argv[2]);
+        column_size = stoi(argv[3]);
+        num_trials_custom = stoi(argv[4]);
+        tbb_threads_number = stoi(argv[5]);
+    }
+      tbb::global_control c(tbb::global_control::max_allowed_parallelism, tbb_threads_number);
+    //cout << "jaccard_non_existent with custom block_size = " << row_size <<"i" <<column_size << endl;
+    vector<double> time;
+    double median;
+
+    for(int i = 0; i < num_trials_custom; i++) {
+        auto start = high_resolution_clock::now();
+        vertex_similarity_block_processing(my_graph, row_size, column_size);
+        auto stop = high_resolution_clock::now();
+
+        time.push_back(std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count());
+        //cout << i << " iter: " << time.back() << endl;
+    }
   return 0;
+}
+
+void print_revert_vertex_similarity_result(const oneapi::dal::table &table1, const oneapi::dal::table &table2, const int64_t& nnz_count) {
+  auto arr1 = oneapi::dal::row_accessor<const float>(table1).pull();
+  const auto x1 = arr1.get_data();
+  auto arr2 = oneapi::dal::row_accessor<const float>(table2).pull();
+  const auto x2 = arr2.get_data();
+
+  for (std::int64_t i = 0; i < nnz_count; i++) {
+    if (x1[i] < x1[table1.get_column_count() + i]) {
+      cout << x1[i] << " " << x1[table1.get_column_count() + i] << " " << x2[i] << endl;
+    }
+  }
 }
 
 template <class Graph>
@@ -117,8 +150,14 @@ void vertex_similarity_block_processing(const Graph &g,
                            std::min(column_range_end, vertex_count)});
 
                   // compute Jaccard coefficients for the block
-                  vertex_similarity(jaccard_desc, g,
+                  auto result_vertex_similarity = vertex_similarity(jaccard_desc, g,
                     processing_blocks[tbb::this_task_arena::current_thread_index()]);
+                                    // extract the result
+                  auto jaccard_coeffs = result_vertex_similarity.get_coeffs();
+                  auto vertex_pairs = result_vertex_similarity.get_vertex_pairs();
+                  auto nonzero_coeff_count = result_vertex_similarity.get_nonzero_coeff_count();
+                  print_revert_vertex_similarity_result(vertex_pairs, jaccard_coeffs, nonzero_coeff_count);
+                  // do application specific postprocessing of the result here
 
                   // do application specific postprocessing of the result here
                 }
