@@ -158,8 +158,8 @@ ONEAPI_DAL_EXPORT auto get_edge_count_impl(const Graph &graph) noexcept -> edge_
     return layout->_edge_count;
 }
 
-template ONEAPI_DAL_EXPORT edge_size_type<graph_default> get_edge_count_impl(
-    const graph_default &graph);
+template ONEAPI_DAL_EXPORT auto get_edge_count_impl(const graph_default &graph) noexcept
+    -> edge_size_type<graph_default>;
 
 template <typename Graph>
 ONEAPI_DAL_EXPORT auto get_vertex_degree_impl(const Graph &graph,
@@ -169,9 +169,9 @@ ONEAPI_DAL_EXPORT auto get_vertex_degree_impl(const Graph &graph,
     return layout->_degrees[vertex];
 }
 
-template ONEAPI_DAL_EXPORT edge_size_type<graph_default> get_vertex_degree_impl(
+template ONEAPI_DAL_EXPORT auto get_vertex_degree_impl(
     const graph_default &graph,
-    const vertex_type<graph_default> &vertex);
+    const vertex_type<graph_default> &vertex) noexcept -> edge_size_type<graph_default>;
 
 template <typename Graph>
 ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(const Graph &graph,
@@ -185,8 +185,8 @@ ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(const Graph &graph,
     return std::make_pair(vertex_neighbors_begin, vertex_neighbors_end);
 }
 
-template ONEAPI_DAL_EXPORT const_edge_range_type<graph_default> get_vertex_neighbors_impl(
+template ONEAPI_DAL_EXPORT auto get_vertex_neighbors_impl(
     const graph_default &graph,
-    const vertex_type<graph_default> &vertex);
+    const vertex_type<graph_default> &vertex) noexcept -> const_edge_range_type<graph_default>;
 } // namespace detail
 } // namespace oneapi::dal::preview
