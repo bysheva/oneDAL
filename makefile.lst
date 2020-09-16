@@ -23,7 +23,7 @@ CORE.ALGORITHMS.CUSTOM.AVAILABLE := low_order_moments quantiles covariance cosdi
                 kernel_function sorting normalization optimization_solver objective_function decision_tree             \
                 dtrees/gbt dtrees/forest linear_regression ridge_regression naivebayes stump adaboost brownboost       \
                 logitboost svm multiclassclassifier k_nearest_neighbors logistic_regression implicit_als               \
-                coordinate_descent
+                coordinate_descent jaccard
 
 low_order_moments +=
 quantiles +=
@@ -242,7 +242,11 @@ ONEAPI.ALGOS :=     \
     linear_kernel   \
     pca             \
     rbf_kernel      \
-    svm
+    svm             \
+    jaccard
+
+ONEAPI.IO :=     \
+    csv
 
 JJ.ALGORITHMS       := adaboost                                                  \
                        adaboost/prediction                                       \
@@ -250,6 +254,9 @@ JJ.ALGORITHMS       := adaboost                                                 
                        adaboost/training                                         \
                        association_rules                                         \
                        bacon_outlier_detection                                   \
+                       bf_knn_classification                                     \
+                       bf_knn_classification/prediction                          \
+                       bf_knn_classification/training                            \
                        binary_adaboost                                           \
                        binary_adaboost/prediction                                \
                        binary_adaboost/quality_metric_set                        \

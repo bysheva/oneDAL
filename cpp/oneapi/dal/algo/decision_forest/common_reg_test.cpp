@@ -15,7 +15,8 @@
 *******************************************************************************/
 
 #include "gtest/gtest.h"
-#include "oneapi/dal/algo/decision_forest.hpp"
+#include "oneapi/dal/algo/decision_forest/infer.hpp"
+#include "oneapi/dal/algo/decision_forest/train.hpp"
 #include "oneapi/dal/table/row_accessor.hpp"
 
 using namespace oneapi;
@@ -135,7 +136,6 @@ TEST(df_bad_arg_tests, set_max_leaf_nodes) {
 
 TEST(df_bad_arg_tests, set_train_data) {
     constexpr std::int64_t row_count_train = 6;
-    constexpr std::int64_t column_count    = 2;
 
     const float y_train[] = { 0.f, 0.f, 0.f, 1.f, 1.f, 1.f };
 
@@ -150,7 +150,7 @@ TEST(df_bad_arg_tests, set_train_data) {
 
 TEST(df_bad_arg_tests, set_train_labels) {
     constexpr std::int64_t row_count_train = 6;
-    constexpr std::int64_t column_count    = 2;
+    constexpr std::int64_t column_count = 2;
 
     const float x_train[] = {
         -2.f, -1.f, -1.f, -1.f, -1.f, -2.f, +1.f, +1.f, +1.f, +2.f, +2.f, +1.f
@@ -169,7 +169,7 @@ TEST(df_bad_arg_tests, set_train_labels) {
 
 TEST(df_bad_arg_tests, set_bootstrap) {
     constexpr std::int64_t row_count_train = 6;
-    constexpr std::int64_t column_count    = 2;
+    constexpr std::int64_t column_count = 2;
 
     const float x_train[] = {
         -2.f, -1.f, -1.f, -1.f, -1.f, -2.f, +1.f, +1.f, +1.f, +2.f, +2.f, +1.f
@@ -223,9 +223,9 @@ TEST(df_bad_arg_tests, set_bootstrap) {
 }
 
 TEST(df_bad_arg_tests, data_rows_matches_labels_rows) {
-    constexpr std::int64_t row_count_train         = 6;
+    constexpr std::int64_t row_count_train = 6;
     constexpr std::int64_t row_count_train_invalid = 5;
-    constexpr std::int64_t column_count            = 2;
+    constexpr std::int64_t column_count = 2;
 
     const float x_train[] = {
         -2.f, -1.f, -1.f, -1.f, -1.f, -2.f, +1.f, +1.f, +1.f, +2.f, +2.f, +1.f
@@ -245,13 +245,12 @@ TEST(df_bad_arg_tests, data_rows_matches_labels_rows) {
 
 TEST(df_bad_arg_tests, set_infer_data) {
     constexpr std::int64_t row_count_train = 6;
-    constexpr std::int64_t column_count    = 2;
+    constexpr std::int64_t column_count = 2;
 
     const float x_train[] = {
         -2.f, -1.f, -1.f, -1.f, -1.f, -2.f, +1.f, +1.f, +1.f, +2.f, +2.f, +1.f
     };
     const float y_train[] = { 0.f, 0.f, 0.f, 1.f, 1.f, 1.f };
-    const float x_test[]  = { -1.f, -1.f, 2.f, 2.f, 3.f, 2.f };
 
     const auto x_train_table = dal::homogen_table{ x_train,
                                                    row_count_train,
@@ -261,7 +260,7 @@ TEST(df_bad_arg_tests, set_infer_data) {
         dal::homogen_table{ y_train, row_count_train, 1, dal::empty_delete<const float>() };
     dal::homogen_table x_test_table;
 
-    const auto df_desc      = df::descriptor<float, df::task::regression, df::method::dense>{};
+    const auto df_desc = df::descriptor<float, df::task::regression, df::method::dense>{};
     const auto result_train = dal::train(df_desc, x_train_table, y_train_table);
 
     ASSERT_THROW(dal::infer(df_desc, result_train.get_model(), x_test_table), dal::domain_error);

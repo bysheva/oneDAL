@@ -1,11 +1,38 @@
 package(default_visibility = ["//visibility:public"])
 load("@onedal//dev/bazel:daal.bzl",
     "daal_module",
-    "daal_depset",
     "daal_static_lib",
+    "daal_dynamic_lib",
     "daal_algorithms",
     "daal_generate_version",
     "daal_patch_kernel_defines",
+)
+
+daal_module(
+    name = "microvmlipp",
+    override_deps_lib_tag = True,
+    deps = [
+        "@micromkl//:vml_ipp",
+        # TODO: Currently vml_ipp lib depends on TBB, but it shouldn't
+        #       Remove TBB from deps once problem with vml_ipp is resolved
+        "@tbb//:tbb_binary",
+    ],
+)
+
+daal_module(
+    name = "micromkl_sequential",
+    override_deps_lib_tag = True,
+    deps = [
+        "@micromkl//:mkl_seq",
+    ],
+)
+
+daal_module(
+    name = "micromkl_thread",
+    override_deps_lib_tag = True,
+    deps = [
+        "@micromkl//:mkl_thr",
+    ],
 )
 
 daal_patch_kernel_defines(
@@ -46,7 +73,7 @@ daal_module(
     hdrs = glob([
         "src/services/**/*.h",
         "src/externals/**/*.h",
-        "src/algorithms/service_*.h",
+        "src/algorithms/*.h",
     ]) + [
         ":version",
     ],
@@ -65,14 +92,17 @@ daal_module(
 
 daal_module(
     name = "services",
-    srcs = glob(
-        ["src/services/**/*.cpp", "src/externals/**/*.cpp"],
+    srcs = glob([
+            "src/services/**/*.cpp",
+            "src/externals/**/*.cpp",
+            "src/algorithms/*.cpp",
+        ],
         exclude = ["src/externals/**/*_win_dll.cpp"],
     ),
     deps = [
         ":service_headers",
         ":threading_headers",
-        "@micromkl//:vml_ipp",
+        ":microvmlipp",
     ],
 )
 
@@ -80,15 +110,6 @@ daal_module(
     name = "data_management",
     hdrs = glob(["src/data_management/**/*.h"]),
     srcs = glob(["src/data_management/**/*.cpp"]),
-    deps = [
-        ":services",
-    ],
-)
-
-daal_module(
-    name = "algorithms_base",
-    hdrs = glob(["src/algorithms/*.h"], exclude=["src/algorithms/service_*"]),
-    srcs = glob(["src/algorithms/*.cpp"], exclude=["src/algorithms/service_*"]),
     deps = [
         ":services",
     ],
@@ -113,7 +134,7 @@ daal_module(
     ],
     deps = [
         ":threading_headers",
-        "@micromkl//:mkl_seq",
+        ":micromkl_sequential",
     ],
 )
 
@@ -129,9 +150,9 @@ daal_module(
     ],
     deps = [
         ":threading_headers",
+        ":micromkl_thread",
         "@tbb//:tbb",
         "@tbb//:tbbmalloc",
-        "@micromkl//:mkl_thr",
     ],
 )
 
@@ -140,7 +161,6 @@ daal_module(
     deps = [
         ":services",
         ":data_management",
-        ":algorithms_base",
     ],
 )
 
@@ -243,7 +263,34 @@ daal_static_lib(
     ],
 )
 
-daal_depset(
+daal_dynamic_lib(
+    name = "core_dynamic",
+    lib_name = "onedal_core",
+    deps = [
+        ":core",
+        ":all_algorithms",
+    ],
+)
+
+daal_dynamic_lib(
+    name = "sequential_dynamic",
+    lib_name = "onedal_sequential",
+    deps = [
+        ":threading_seq",
+    ],
+    def_file = "src/threading/export_lnx32e.def",
+)
+
+daal_dynamic_lib(
+    name = "thread_dynamic",
+    lib_name = "onedal_thread",
+    deps = [
+        ":threading_tbb",
+    ],
+    def_file = "src/threading/export_lnx32e.def",
+)
+
+daal_module(
     name = "threading_static",
     deps = select({
         "@config//:par_test_thread_mode": [
@@ -255,7 +302,19 @@ daal_depset(
     }),
 )
 
-daal_depset(
+daal_module(
+    name = "threading_dynamic",
+    deps = select({
+        "@config//:par_test_thread_mode": [
+            "@onedal//cpp/daal:thread_dynamic",
+        ],
+        "@config//:seq_test_thread_mode": [
+            "@onedal//cpp/daal:sequential_dynamic",
+        ],
+    }),
+)
+
+daal_module(
     name = "threading_release_static",
     deps = select({
         "@config//:par_test_thread_mode": [
@@ -263,6 +322,18 @@ daal_depset(
         ],
         "@config//:seq_test_thread_mode": [
             "@onedal_release//:sequential_static",
+        ],
+    }),
+)
+
+daal_module(
+    name = "threading_release_dynamic",
+    deps = select({
+        "@config//:par_test_thread_mode": [
+            "@onedal_release//:thread_dynamic",
+        ],
+        "@config//:seq_test_thread_mode": [
+            "@onedal_release//:sequential_dynamic",
         ],
     }),
 )
