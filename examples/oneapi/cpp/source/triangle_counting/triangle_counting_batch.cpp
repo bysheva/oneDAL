@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Global triangles: " << result_vertex_ranking.get_global_rank() << std::endl;
     }
-    
+
     std::cout << "Local TC relabel: " << std::endl;
 
     for (int i = 0; i < num_trials; i++) {
