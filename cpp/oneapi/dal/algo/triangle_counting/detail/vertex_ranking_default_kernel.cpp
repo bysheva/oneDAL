@@ -22,7 +22,7 @@
 namespace oneapi::dal::preview::triangle_counting::detail {
 
 template <>
-std::int64_t triangle_counting_global_scalar<std::int32_t>(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT std::int64_t triangle_counting_global_scalar<std::int32_t>(const dal::detail::host_policy& policy,
                                                            const std::int32_t* vertex_neighbors,
                                                            const std::int64_t* edge_offsets,
                                                            const std::int32_t* degrees,
@@ -38,7 +38,7 @@ std::int64_t triangle_counting_global_scalar<std::int32_t>(const dal::detail::ho
 }
 
 template <>
-std::int64_t triangle_counting_global_vector<std::int32_t>(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT std::int64_t triangle_counting_global_vector<std::int32_t>(const dal::detail::host_policy& policy,
                                                            const std::int32_t* vertex_neighbors,
                                                            const std::int64_t* edge_offsets,
                                                            const std::int32_t* degrees,
@@ -54,7 +54,7 @@ std::int64_t triangle_counting_global_vector<std::int32_t>(const dal::detail::ho
 }
 
 template <>
-std::int64_t triangle_counting_global_vector_relabel<std::int32_t>(
+ONEDAL_EXPORT std::int64_t triangle_counting_global_vector_relabel<std::int32_t>(
     const dal::detail::host_policy& policy,
     const std::int32_t* vertex_neighbors,
     const std::int64_t* edge_offsets,
@@ -88,7 +88,7 @@ ONEDAL_EXPORT std::int64_t compute_global_triangles(const dal::detail::host_poli
     });
 }
 
-void sort_ids_by_degree(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT void sort_ids_by_degree(const dal::detail::host_policy& policy,
                         const std::int32_t* degrees,
                         std::pair<std::int32_t, std::size_t>* degree_id_pairs,
                         std::int64_t vertex_count) {
@@ -97,7 +97,7 @@ void sort_ids_by_degree(const dal::detail::host_policy& policy,
     });
 }
 
-void fill_new_degrees_and_ids(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT void fill_new_degrees_and_ids(const dal::detail::host_policy& policy,
                               const std::pair<std::int32_t, std::size_t>* degree_id_pairs,
                               std::int32_t* new_ids,
                               std::int32_t* degrees_relabel,
@@ -110,7 +110,7 @@ void fill_new_degrees_and_ids(const dal::detail::host_policy& policy,
     });
 }
 
-void parallel_prefix_sum(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT void parallel_prefix_sum(const dal::detail::host_policy& policy,
                          const std::int32_t* degrees_relabel,
                          std::int64_t* offsets,
                          std::int64_t* part_prefix,
@@ -129,7 +129,7 @@ void parallel_prefix_sum(const dal::detail::host_policy& policy,
     });
 }
 
-void fill_relabeled_topology(const dal::detail::host_policy& policy,
+ONEDAL_EXPORT void fill_relabeled_topology(const dal::detail::host_policy& policy,
                              const std::int32_t* vertex_neighbors,
                              const std::int64_t* edge_offsets,
                              std::int32_t* vertex_neighbors_relabel,
