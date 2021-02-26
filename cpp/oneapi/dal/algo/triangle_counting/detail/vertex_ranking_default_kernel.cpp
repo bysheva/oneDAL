@@ -22,7 +22,7 @@
 namespace oneapi::dal::preview::triangle_counting::detail {
 
 template <>
-ONEDAL_EXPORT std::int64_t triangle_counting_global_scalar<std::int32_t>(const dal::detail::host_policy& policy,
+std::int64_t triangle_counting_global_scalar<std::int32_t>(const dal::detail::host_policy& policy,
                                                            const std::int32_t* vertex_neighbors,
                                                            const std::int64_t* edge_offsets,
                                                            const std::int32_t* degrees,
@@ -38,7 +38,7 @@ ONEDAL_EXPORT std::int64_t triangle_counting_global_scalar<std::int32_t>(const d
 }
 
 template <>
-ONEDAL_EXPORT std::int64_t triangle_counting_global_vector<std::int32_t>(const dal::detail::host_policy& policy,
+std::int64_t triangle_counting_global_vector<std::int32_t>(const dal::detail::host_policy& policy,
                                                            const std::int32_t* vertex_neighbors,
                                                            const std::int64_t* edge_offsets,
                                                            const std::int32_t* degrees,
@@ -54,7 +54,7 @@ ONEDAL_EXPORT std::int64_t triangle_counting_global_vector<std::int32_t>(const d
 }
 
 template <>
-ONEDAL_EXPORT std::int64_t triangle_counting_global_vector_relabel<std::int32_t>(
+std::int64_t triangle_counting_global_vector_relabel<std::int32_t>(
     const dal::detail::host_policy& policy,
     const std::int32_t* vertex_neighbors,
     const std::int64_t* edge_offsets,
@@ -71,7 +71,7 @@ ONEDAL_EXPORT std::int64_t triangle_counting_global_vector_relabel<std::int32_t>
 }
 
 template <>
-ONEDAL_EXPORT array<std::int64_t> triangle_counting_local<std::int32_t>(
+array<std::int64_t> triangle_counting_local<std::int32_t>(
     const dal::detail::host_policy& policy,
     const dal::preview::detail::topology<std::int32_t>& data,
     int64_t* triangles_local) {
@@ -80,15 +80,15 @@ ONEDAL_EXPORT array<std::int64_t> triangle_counting_local<std::int32_t>(
     });
 }
 
-ONEDAL_EXPORT std::int64_t compute_global_triangles(const dal::detail::host_policy& policy,
-                                                    const array<std::int64_t>& local_triangles,
-                                                    std::int64_t vertex_count) {
+std::int64_t compute_global_triangles(const dal::detail::host_policy& policy,
+                                      const array<std::int64_t>& local_triangles,
+                                      std::int64_t vertex_count) {
     return dal::backend::dispatch_by_cpu(dal::backend::context_cpu{ policy }, [&](auto cpu) {
         return backend::compute_global_triangles<decltype(cpu)>(local_triangles, vertex_count);
     });
 }
 
-ONEDAL_EXPORT void sort_ids_by_degree(const dal::detail::host_policy& policy,
+void sort_ids_by_degree(const dal::detail::host_policy& policy,
                         const std::int32_t* degrees,
                         std::pair<std::int32_t, std::size_t>* degree_id_pairs,
                         std::int64_t vertex_count) {
@@ -97,7 +97,7 @@ ONEDAL_EXPORT void sort_ids_by_degree(const dal::detail::host_policy& policy,
     });
 }
 
-ONEDAL_EXPORT void fill_new_degrees_and_ids(const dal::detail::host_policy& policy,
+void fill_new_degrees_and_ids(const dal::detail::host_policy& policy,
                               const std::pair<std::int32_t, std::size_t>* degree_id_pairs,
                               std::int32_t* new_ids,
                               std::int32_t* degrees_relabel,
@@ -110,7 +110,7 @@ ONEDAL_EXPORT void fill_new_degrees_and_ids(const dal::detail::host_policy& poli
     });
 }
 
-ONEDAL_EXPORT void parallel_prefix_sum(const dal::detail::host_policy& policy,
+void parallel_prefix_sum(const dal::detail::host_policy& policy,
                          const std::int32_t* degrees_relabel,
                          std::int64_t* offsets,
                          std::int64_t* part_prefix,
@@ -129,7 +129,7 @@ ONEDAL_EXPORT void parallel_prefix_sum(const dal::detail::host_policy& policy,
     });
 }
 
-ONEDAL_EXPORT void fill_relabeled_topology(const dal::detail::host_policy& policy,
+void fill_relabeled_topology(const dal::detail::host_policy& policy,
                              const std::int32_t* vertex_neighbors,
                              const std::int64_t* edge_offsets,
                              std::int32_t* vertex_neighbors_relabel,
